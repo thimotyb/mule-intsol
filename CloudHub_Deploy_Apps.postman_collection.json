@@ -1,0 +1,720 @@
+{
+	"info": {
+		"_postman_id": "76a203fd-384a-48a6-ad97-542fb45da3aa",
+		"name": "   CloudHub_Deploy_Apps",
+		"description": "Deploy and manage apps in on-prem Mule runtimes. Deploy to one server or a server group. \n\nUse the APOpsOnPrem environment with this collection.\n\nTo create/manage/delete a new application:\n\n* Send requests 01 - 03, in that order, to configure required headers and store them in environment variables.\n\n* Set the appName enviroment variable in the Pre-request script of\n06 Get deployed apps in the environment\nthen Send this request to set the deploymentId environment variable. \n\n* Pick one of 07 Deploy app to a CloudHub worker\n* \n**First browse for the deployable archive in the Header. \n**Then Send the REST POST request. \n\n* Use 09 Stop and application or 10 Start and application to manage the new deployment (matching deploymentID).\n\n* Use 11 Delete a deployment to delete the depoymentId deployment. \n\n",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Step 1: Set required headers",
+			"item": [
+				{
+					"name": "01 get access token with username/password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"access_token is in response\"] = responseBody.has(\"access_token\");",
+									"",
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"postman.clearEnvironmentVariable(\"access_token\");",
+									"",
+									"postman.setEnvironmentVariable(\"access_token\", jsonData.access_token);",
+									"",
+									"tests[\"access_token set\"] = environment[\"access_token\"]===jsonData.access_token;"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var onpremYY = \"01\";",
+									"var studentXX = \"07\";",
+									"",
+									"postman.setEnvironmentVariable(\"YY\", onpremYY);",
+									"",
+									"postman.setEnvironmentVariable(\"XX\", studentXX);",
+									"",
+									"postman.setEnvironmentVariable(\"username\", \"Cloud\"+onpremYY+\"student\"+studentXX);",
+									"",
+									"postman.setEnvironmentVariable(\"password\", \"L3arnmule\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\":\"{{username}}\",\n    \"password\":\"{{password}}\"\n}"
+						},
+						"url": {
+							"raw": "https://anypoint.mulesoft.com/accounts/login",
+							"protocol": "https",
+							"host": [
+								"anypoint",
+								"mulesoft",
+								"com"
+							],
+							"path": [
+								"accounts",
+								"login"
+							]
+						},
+						"description": "Set the cloudXX, studentYY, username and password environment variables. \n\nThen get an access token and store it as the access_token environment variable. "
+					},
+					"response": [
+						{
+							"name": "access_token",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\":\"{{username}}\",\n    \"password\":\"{{password}}\"\n}"
+								},
+								"url": {
+									"raw": "https://anypoint.mulesoft.com/accounts/login",
+									"protocol": "https",
+									"host": [
+										"anypoint",
+										"mulesoft",
+										"com"
+									],
+									"path": [
+										"accounts",
+										"login"
+									]
+								},
+								"description": "Set the cloudXX, studentYY, username and password environment variables. \n\nThen get an access token and store it as the access_token environment variable. "
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "javascript",
+							"header": [
+								{
+									"key": "Connection",
+									"value": "keep-alive",
+									"name": "Connection",
+									"description": ""
+								},
+								{
+									"key": "Content-Length",
+									"value": "113",
+									"name": "Content-Length",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8",
+									"name": "Content-Type",
+									"description": ""
+								},
+								{
+									"key": "Date",
+									"value": "Sat, 18 Jun 2016 08:49:27 GMT",
+									"name": "Date",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"71-5oWeD6UcTvESgEotWAQiUA\"",
+									"name": "ETag",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "-1",
+									"name": "Expires",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"name": "Pragma",
+									"description": ""
+								},
+								{
+									"key": "Server",
+									"value": "nginx",
+									"name": "Server",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "X-HTTP-Method-Override, Accept-Encoding",
+									"name": "Vary",
+									"description": ""
+								},
+								{
+									"key": "X-Powered-By",
+									"value": "Express",
+									"name": "X-Powered-By",
+									"description": ""
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"access_token\": \"dda07f39-1efb-4c42-99d5-9be90023962a\",\n  \"token_type\": \"bearer\",\n  \"redirectUrl\": \"/home/\"\n}"
+						}
+					]
+				},
+				{
+					"name": "02 Set organizationId env variable",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"var orgs = jsonData.user.memberOfOrganizations;",
+									"var XX = environment[\"XX\"];",
+									"var YY = environment[\"YY\"];",
+									"",
+									"tests[\"XX is \"+XX] = XX===environment[\"XX\"];",
+									"",
+									"tests[\"YY is \"+YY] = YY==environment[\"YY\"];",
+									"",
+									"var subOrgName = \"Cloud\"+environment[\"YY\"]+\"SubGroup\"+environment[\"XX\"];",
+									"",
+									"postman.setEnvironmentVariable(\"organizationName\", subOrgName);",
+									"",
+									"tests[\"response has subOrg Name \"+subOrgName] = responseBody.has(subOrgName);",
+									"",
+									"var orgId = 0;",
+									"",
+									"for (var i=0; i< orgs.length; i++){",
+									"    if( orgs[i].name === subOrgName){",
+									"        orgId=orgs[i].id;",
+									"    }",
+									"}",
+									"",
+									"",
+									"postman.setEnvironmentVariable(\"organizationId\", orgId);",
+									"",
+									"tests[\"organizationName set to \"+subOrgName] = environment[\"organizationName\"]==subOrgName",
+									"",
+									"tests[\"organizationId set \"+orgId] = environment[\"organizationId\"]==orgId",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "https://anypoint.mulesoft.com/accounts/api/me",
+							"protocol": "https",
+							"host": [
+								"anypoint",
+								"mulesoft",
+								"com"
+							],
+							"path": [
+								"accounts",
+								"api",
+								"me"
+							]
+						},
+						"description": "Get a particular organization for this account and store its id in the organizationId environment variable. "
+					},
+					"response": []
+				},
+				{
+					"name": "03 Set environmentId variable for Production environment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var myEnv = \"Production\";",
+									"",
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"var envs = jsonData.data;",
+									"",
+									"postman.clearEnvironmentVariable(\"environmentId\");",
+									"",
+									"tests[\"Environment \"+myEnv+\" is defined\"] = responseBody.has(myEnv);",
+									"",
+									"var envId = \"DOES NOT EXIST\";",
+									"",
+									"for (var i=0; i< envs.length; i++){",
+									"    if( envs[i].name === myEnv){",
+									"        envId=envs[i].id;",
+									"    }",
+									"}",
+									"if(envId!==\"DOES NOT EXIST\"){",
+									"   postman.setEnvironmentVariable(\"environmentId\", envId);",
+									"}",
+									"tests[\"environmentId set to \"+envId] = environment[\"environmentId\"]===envId",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "https://anypoint.mulesoft.com/accounts/api/organizations/{{organizationId}}/environments",
+							"protocol": "https",
+							"host": [
+								"anypoint",
+								"mulesoft",
+								"com"
+							],
+							"path": [
+								"accounts",
+								"api",
+								"organizations",
+								"{{organizationId}}",
+								"environments"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "Step 2: Manage applications",
+			"item": [
+				{
+					"name": "List all Apps for an Env",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "a4bef282-417e-47b7-bab7-677ab125b475",
+								"type": "text/javascript",
+								"exec": [
+									"postman.setEnvironmentVariable(\"appName\", \"mynewapp{{YY}}{{XX}}\");",
+									"",
+									"",
+									"postman.setEnvironmentVariable(\"appVersionId\", \"57756c99e4b09533e5229b3d\");",
+									"",
+									"postman.setGlobalVariable(\"cloudhubApi\", \"https://anypoint.mulesoft.com/cloudhub/api\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							},
+							{
+								"key": "X-ANYPNT-ENV-ID",
+								"value": "{{environmentId}}"
+							}
+						],
+						"url": {
+							"raw": "{{cloudhubApi}}/v2/applications/",
+							"host": [
+								"{{cloudhubApi}}"
+							],
+							"path": [
+								"v2",
+								"applications",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get an App's details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							},
+							{
+								"key": "X-ANYPNT-ENV-ID",
+								"value": "{{environmentId}}"
+							}
+						],
+						"url": {
+							"raw": "{{cloudhubApi}}/v2/applications/{{appName}}",
+							"host": [
+								"{{cloudhubApi}}"
+							],
+							"path": [
+								"v2",
+								"applications",
+								"{{appName}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create a new app/domain deployment",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "35196923-4c43-478c-aa80-f16b56fc9cde",
+								"exec": [
+									"postman.setEnvironmentVariable(\"appName\", \"myNewApp{{YY}}{{XX}}\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							},
+							{
+								"key": "X-ANYPNT-ENV-ID",
+								"value": "{{environmentId}}"
+							},
+							{
+								"key": "X-ANYPNT-ORG-ID",
+								"value": "{{organizationId}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appInfoJson",
+									"value": "{ \"domain\": \"server-info-postman-timo\", \"muleVersion\": { \"version\": \"4.3.0\" }, \"region\": \"us-east-1\", \"monitoringEnabled\": true, \"monitoringAutoRestart\": true, \"workers\": { \"amount\": 1, \"type\": { \"name\": \"Micro\", \"weight\": 0.1, \"cpu\": \"0.1 vCore\", \"memory\": \"500 MB memory\" } }, \"loggingNgEnabled\": true, \"persistentQueues\": true }",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/C:/Users/thimo/Dropbox/corsi/mule/Mule-materials/APOpsCloud4.3_studentFiles_30Jun2020/APOpsCloud4.3_studentFiles_30Jun2020/mod3-mule/server-info.jar"
+								},
+								{
+									"key": "",
+									"value": "",
+									"type": "text"
+								},
+								{
+									"key": "",
+									"value": "",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{cloudhubApi}}/v2/applications/",
+							"host": [
+								"{{cloudhubApi}}"
+							],
+							"path": [
+								"v2",
+								"applications",
+								""
+							]
+						},
+						"description": "deploy a local file to cloudhub with options\n\nappInfoJson can have several parameters:\n\nappData: \n{\n   \"domain\":\"gpswalker-ch07\",\n   \"workers.amount\":1\n}"
+					},
+					"response": []
+				},
+				{
+					"name": "Start an app",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							},
+							{
+								"key": "X-ANYPNT-ENV-ID",
+								"value": "{{environmentId}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{   \"status\":\"start\"\n}"
+						},
+						"url": {
+							"raw": "{{cloudhubApi}}/applications/{{appName}}/status",
+							"host": [
+								"{{cloudhubApi}}"
+							],
+							"path": [
+								"applications",
+								"{{appName}}",
+								"status"
+							]
+						},
+						"description": "Generated from a curl request: \\ncurl -X POST -H \\\"Content-Type: application/json\\\" -H \\\"Authorization: bearer d954f68a-2bcf-4c58-8187-7027384b3047\\\" -H \\\"X-ANYPNT-ORG-ID: 30931a88-a04b-48db-8e4d-99359376c32b\\\" -H \\\"X-ANYPNT-ENV-ID: f28b1f12-81d8-4195-91b1-497672f61041\\\" -H \\\"Cache-Control: no-cache\\\" -H \\\"Postman-Token: c6b107de-f0dc-d224-9772-d759746d7a33\\\" -d '{\n    \\\"status\\\":\\\"start\\\"\n}' \\\"https://anypoint.mulesoft.com/cloudhub/api/applications/gpswalker-env-ch07-20160607-prod/status\\\""
+					},
+					"response": []
+				},
+				{
+					"name": "Stop an app",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							},
+							{
+								"key": "X-ANYPNT-ENV-ID",
+								"value": "{{environmentId}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{   \"status\":\"stop\"\n}"
+						},
+						"url": {
+							"raw": "{{cloudhubApi}}/applications/{{appName}}/status",
+							"host": [
+								"{{cloudhubApi}}"
+							],
+							"path": [
+								"applications",
+								"{{appName}}",
+								"status"
+							]
+						},
+						"description": "Generated from a curl request: \\ncurl -X POST -H \\\"Content-Type: application/json\\\" -H \\\"Authorization: bearer d954f68a-2bcf-4c58-8187-7027384b3047\\\" -H \\\"X-ANYPNT-ORG-ID: 30931a88-a04b-48db-8e4d-99359376c32b\\\" -H \\\"X-ANYPNT-ENV-ID: f28b1f12-81d8-4195-91b1-497672f61041\\\" -H \\\"Cache-Control: no-cache\\\" -H \\\"Postman-Token: c6b107de-f0dc-d224-9772-d759746d7a33\\\" -d '{\n    \\\"status\\\":\\\"start\\\"\n}' \\\"https://anypoint.mulesoft.com/cloudhub/api/applications/gpswalker-env-ch07-20160607-prod/status\\\""
+					},
+					"response": []
+				},
+				{
+					"name": "Restart an app",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							},
+							{
+								"key": "X-ANYPNT-ENV-ID",
+								"value": "{{environmentId}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{   \"status\":\"restart\"\n}"
+						},
+						"url": {
+							"raw": "{{cloudhubApi}}/applications/{{appName}}/status",
+							"host": [
+								"{{cloudhubApi}}"
+							],
+							"path": [
+								"applications",
+								"{{appName}}",
+								"status"
+							]
+						},
+						"description": "Generated from a curl request: \\ncurl -X POST -H \\\"Content-Type: application/json\\\" -H \\\"Authorization: bearer d954f68a-2bcf-4c58-8187-7027384b3047\\\" -H \\\"X-ANYPNT-ORG-ID: 30931a88-a04b-48db-8e4d-99359376c32b\\\" -H \\\"X-ANYPNT-ENV-ID: f28b1f12-81d8-4195-91b1-497672f61041\\\" -H \\\"Cache-Control: no-cache\\\" -H \\\"Postman-Token: c6b107de-f0dc-d224-9772-d759746d7a33\\\" -d '{\n    \\\"status\\\":\\\"start\\\"\n}' \\\"https://anypoint.mulesoft.com/cloudhub/api/applications/gpswalker-env-ch07-20160607-prod/status\\\""
+					},
+					"response": []
+				},
+				{
+					"name": "POST Update a CloudHub deployment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							},
+							{
+								"key": "X-ANYPNT-ENV-ID",
+								"value": "{{environmentId}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appInfoJson",
+									"value": "{ \"fileChecksum\":\"\", \"fileSource\":\"\", \"muleVersion\":{ \"version\":\"3.8.0\" }, \"properties\":{ \"key1\":\"value1\", \"key2\":\"value2\"}, \"logLevels\":[ ], \"trackingSettings\":{ \"trackingLevel\":\"METADATA_AND_REPLAY\" }, \"region\":\"us-east-1\", \"multitenanted\":false, \"vpnEnabled\":false, \"secureDataGatewayEnabled\":false, \"persistentQueues\":true, \"persistentQueuesEncrypted\":true, \"monitoringEnabled\":true, \"monitoringAutoRestart\":true, \"workers\":{ \"type\":{ \"name\":\"Micro\", \"weight\":0000, \"cpu\":\"0.1 vCore ignored?\", \"memory\":\"500 MB memory ignored?\" }, \"amount\":1 } }",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"value": "",
+									"type": "file"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{cloudhubApi}}/v2/applications/{{appName}}",
+							"host": [
+								"{{cloudhubApi}}"
+							],
+							"path": [
+								"v2",
+								"applications",
+								"{{appName}}"
+							]
+						},
+						"description": "deploy a local file to cloudhub with options\n\nappInfoJson can have several parameters:\n\nappData: \n{\n   \"domain\":\"gpswalker-ch07\",\n   \"workers.amount\":1\n}"
+					},
+					"response": []
+				},
+				{
+					"name": "Replace the domain's file",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							},
+							{
+								"key": "X-ANYPNT-ENV-ID",
+								"value": "{{environmentId}}"
+							},
+							{
+								"key": "X-ANYPNT-ORG-ID",
+								"value": "{{organizationId}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"value": "",
+									"type": "file"
+								},
+								{
+									"key": "",
+									"value": "",
+									"type": "text"
+								},
+								{
+									"key": "",
+									"value": "",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{cloudhubApi}}/v2/applications/{{appName}}/files",
+							"host": [
+								"{{cloudhubApi}}"
+							],
+							"path": [
+								"v2",
+								"applications",
+								"{{appName}}",
+								"files"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DEL an app deployment def",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "bearer {{access_token}}"
+							},
+							{
+								"key": "X-ANYPNT-ENV-ID",
+								"value": "{{environmentId}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{cloudhubApi}}/v2/applications/mynewapp0107",
+							"host": [
+								"{{cloudhubApi}}"
+							],
+							"path": [
+								"v2",
+								"applications",
+								"mynewapp0107"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Manage an application in a particular business organization's environment. ",
+			"protocolProfileBehavior": {}
+		}
+	],
+	"protocolProfileBehavior": {}
+}
