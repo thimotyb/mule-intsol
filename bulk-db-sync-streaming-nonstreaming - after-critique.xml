@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+	
+		<file:config name="File_Config" doc:name="File Config" doc:id="d880eb9a-c70a-466f-9e7e-936687724a5f" >
+		<file:connection workingDir="/Users/santoshnaik" />
+	</file:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="a77d44e7-dcd8-4d2e-86d1-b6057f49e441" file="config.yaml" />
+
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="0e941d00-aa66-46bc-8aad-d4efb21da42b" >
+		<http:listener-connection host="0.0.0.0" port="8081"/>
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="6a08fa0d-6f4d-4b0c-a6d8-d3ff023b68d1" > 
+	 	<salesforce:basic-connection username="mule@mule.com" password="--------" securityToken="--------------" />  
+	<!-- 	<salesforce:basic-connection username="${salesforce.username}" password="${salesforce.password}" securityToken="${salesforce.securityToken}" />  -->
+	</salesforce:sfdc-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="70aadefe-2efa-4c75-ba1a-3fe735cf172e" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="password" database="training?useUnicode=true&amp;useJDBCCompliantTimezoneShift=true&amp;useLegacyDatetimeCode=false&amp;serverTimezone=UTC" />
+	</db:config>
+	
+		<db:config name="Generic_Derby_Database_Config" doc:name="Database Config" doc:id="d8cc2ed0-7e85-40d8-89e1-5e2459d2b7e3" >
+		<db:generic-connection url="jdbc:derby://localhost:1527/training" driverClassName="org.apache.derby.jdbc.ClientDriver" />
+	</db:config>
+	<flow name="bulk-db-sync-streaming" doc:id="d4d3f2ca-d7e2-483c-a52f-d380b3415654" >
+		<db:listener doc:name="On Table Row" doc:id="80cd6f63-cefe-4f13-bf3f-011643323f71" config-ref="Database_Config" table=" user_details  ">
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</db:listener>
+		<ee:transform doc:name="Transform Message" doc:id="ea32fd7e-4ef4-4c8b-8abd-31db86c3572b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:bulk-insert doc:name="Bulk insert" doc:id="054a231d-c489-434a-b34d-44b838577a16" config-ref="Generic_Derby_Database_Config" >
+			<db:sql >INSERT INTO user_details  VALUES (:user_id, :username, :first_name)</db:sql>
+		</db:bulk-insert>
+	</flow>
+	<flow name="bulkdbperformance-moduleBatchAggregateFlow" doc:id="e8f7e9a9-ff50-4b8b-805e-ee99c84f80e5" initialState="stopped">
+		<scheduler doc:name="Scheduler" doc:id="ecfd15ae-500c-49e7-9d51-f9578705c010" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="90000" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Logger" doc:id="ac87ce96-8725-49c0-858b-05fe64252576" message="#['Started db sync ']"/>
+		<set-variable value="#[dw::util::Timer::currentMilliseconds()]" doc:name="Set Current Time" doc:id="1ed8897f-51d4-4cf2-8a13-5af9de50c754" variableName="begin" />
+		<os:retrieve doc:name="Retrieve Watermark" doc:id="9afbc000-0855-4421-a70d-c668381c5cf4" key="accountid">
+			<os:default-value ><![CDATA[0]]></os:default-value>
+		</os:retrieve>
+		<db:select doc:name="Select" doc:id="cecd6501-d9a7-4984-9506-da4230315f27" config-ref="Database_Config" maxRows="5000" fetchSize="500">
+			<db:sql>select * from user_details  </db:sql>
+			<db:input-parameters><![CDATA[#[{ lastRecord: vars.lastRecord}]]]></db:input-parameters>
+		</db:select>
+		<set-variable value="" doc:name="Get MAx" doc:id="b05d9a30-e310-4df1-9caa-7755041d9c83" variableName="max"/>
+		<batch:job jobName="bulkdbperformance-moduleBatchAggregate_Job" doc:id="62007b2c-d8e8-44b4-b747-48941df8df3c" >
+			<batch:process-records >
+				<batch:step name="Aggregate_Batch_Step" doc:id="542a51a5-7a6f-4ff1-8ec7-f91811919a63" acceptPolicy="ALL">
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="9030e06c-58df-490d-9b49-88b843b6984d" size="500">
+						<ee:transform doc:name="Transform Message" doc:id="d0e2080c-cd12-47f0-96c5-6debc5d6e81c">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	user_id: payload01.username,
+	username: payload01.first_name,
+	first_name: payload01.last_name
+}	
+
+]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<db:bulk-insert doc:name="Bulk insert" doc:id="4c28350a-073d-4a61-b932-1f54bd37669d" config-ref="Generic_Derby_Database_Config">
+							<db:sql >INSERT INTO user_details  VALUES (:user_id, :username, :first_name)</db:sql>
+						</db:bulk-insert>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<os:store doc:name="Store Watermark" doc:id="d55d6c14-75ec-4780-b86e-61957554495f" key="watermark">
+					<os:value ><![CDATA[#[vars.max]]]></os:value>
+				</os:store>
+				<ee:transform doc:name="Elapsed" doc:id="a922ecc1-682e-4438-8489-50bd159f5bd6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import dw::util::Timer
+output application/json
+---
+Timer::currentMilliseconds() - vars.begin]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="2d1a0aa4-d57c-496e-beeb-919e564334d5" message="#[' Time Taken for excution batch with aggreagator db without DW no stream  ' ++ payload]"/>
+		
+	
+			</batch:on-complete>
+		</batch:job>
+		
+	
+</flow>
+	<flow name="processing_SingleJMSMessageFlow" doc:id="1f59c07b-655b-4ac3-ac8f-1993265c3515" >
+		<file:listener doc:name="On New or Updated File" doc:id="af2246da-fe37-48fb-bb1f-b93c20a42d3c" >
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</file:listener>
+		<set-variable value="#[dw::util::Timer::currentMilliseconds()]" doc:name="Set Current Time" doc:id="bdad3abe-daf3-4fe9-bd50-9ef9eeffd2f8" variableName="begin" />
+		<foreach doc:name="For Each" doc:id="2cab4aca-4e2a-40c6-80d2-7ffc2571dca8" >
+			<logger level="INFO" doc:name="Logger" doc:id="ae6f5003-1c33-4898-82c5-151ea328b8e0" />
+			<try doc:name="Try" doc:id="2381b9a3-d74e-47a1-ab11-0be8ecd3915a" >
+				<ee:transform doc:name="Apply Sequential ID" doc:id="4522c375-77ec-4e74-8c15-47bdd6be53e9">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+				<error-handler >
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="5c86d738-e784-4359-86b7-e0bfd9076f1f" type="EXPRESSION">
+						<set-variable value="" doc:name="isError" doc:id="09e80489-d14d-4cd2-902c-57e857945745" />
+					</on-error-continue>
+				</error-handler>
+			</try>
+			<choice doc:name="Choice" doc:id="454c52f5-8978-4c75-81b9-143781a00aed" >
+				<when expression="isError">
+					<jms:publish doc:name="DLQ" doc:id="3c55b7b4-b31e-4b23-9980-f1b9d8205d34" />
+				</when>
+				<otherwise >
+					<jms:publish doc:name="Publish" doc:id="3430e80c-268e-4f0a-917a-ed91f04a25a3" />
+				</otherwise>
+			</choice>
+		</foreach>
+		<ee:transform doc:name="Elapsed" doc:id="67bfb38e-234a-4fa9-a896-192bd295f6ab" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="b9a02aa9-bca5-4c79-9b18-63aa0d2072af" />
+	</flow>
+	<flow name="processing-JMSInsertFlow" doc:id="b69e9565-2b6f-4d0f-b6f6-13ffecb02de8" >
+		<jms:listener doc:name="Listener" doc:id="c2c542c4-4afa-4cc9-a1c1-17bbc354760d" />
+		<db:insert doc:name="Insert" doc:id="d45df516-dbc3-4a14-9b0b-db407e123451" />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="97f87649-b0f2-44e2-bace-649cfb9b54af" >
+				<set-payload value="#[payload]" doc:name="Set Payload" doc:id="f74c831a-b1a0-4d25-b3a7-6d8a88b8a3b3" />
+				<logger level="INFO" doc:name="Logger" doc:id="594ee239-9d23-4e58-8528-ee639cd33ec9" />
+				<jms:publish doc:name="Publish DLQ" doc:id="c52b0126-594d-4426-8d97-afe848671187" />
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="fileBathProcessor" doc:id="d28faa89-a0a6-4398-a998-8b16963c1400" >
+		<file:listener doc:name="On New or Updated File" doc:id="c1c6be05-a977-4eac-8775-850e3adf8b7f" >
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</file:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="9334382e-6513-44cc-994a-83cb4b4a940e" />
+		<set-variable value="" doc:name="Set Variable" doc:id="0e6a8586-77ca-4faf-90ee-bda91eb5f6c8" />
+		<ee:transform doc:name="Csv to []" doc:id="b81ba170-c031-4925-886f-fb1c28f79c01" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="e01ecab0-25a7-422c-aa92-cbdfcb4e6302" >
+			<ee:transform doc:name="Add Seqential ID" doc:id="11c0f2d4-c405-4c83-bfea-3e00dbc1fe4c" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+		</foreach>
+		<batch:job jobName="bulk-db-sync-streaming-nonstreamingBatch_Job" doc:id="8b8d5a5d-23c9-4d64-a487-7f69305e4b2e" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="b1f371ad-f0d1-4385-b299-f7cf41541fcc" >
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="7d5f5bc5-8e86-4507-9a54-7385a729fa02" size="100">
+						<ee:transform doc:name="Transform Message" doc:id="baf6fcff-bd32-40e3-a77d-7d523d15d22f">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+						<db:bulk-insert doc:name="Bulk insert" doc:id="4d90a585-9b4a-4c5b-85ab-c70d8010efa9" />
+					</batch:aggregator>
+				</batch:step>
+				<batch:step name="Batch_Step1" doc:id="b8755703-7910-449a-84a9-7cb784b66583" acceptPolicy="ONLY_FAILURES">
+					<jms:publish doc:name="Publish to DLQ" doc:id="e872a34d-cc96-400b-b6a2-15fec64b5227" />
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<ee:transform doc:name="Transform Message" doc:id="63fe997b-58e9-48f7-a890-b4d686f74ba8" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="e1ac1aa7-c255-4b7f-852c-50ea1a3907bc" />
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+	
+	
+</mule>
